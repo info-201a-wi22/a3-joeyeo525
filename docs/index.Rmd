@@ -1,0 +1,291 @@
+---
+title: "Incareceration Across Races"
+author: "Joey Yeo"
+date: "2/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# ----- imports -----
+library(tidyverse)
+library(leaflet)
+library(htmltools)
+library(maps)
+library(ggplot2)
+
+# read in incarceration trends data
+dat <- read.csv("https://raw.githubusercontent.com/vera-institute/incarceration-trends/master/incarceration_trends.csv")
+```
+### 1 Introduction:
+The question we analyzed was what are the main defining characteristics of white incarceration rates vs black incarceration rates. We will investigate various hypotheses, for instance how the rates of African American and Caucasian populations differ over the years, and how incarceration rates varied by state. The 6 main variables we will be analyzing are "black_jail_pop", "white_jail_pop", "total_jail_pop", "black_prison_pop", "white_prison_pop", and "total_prison_pop". The reasoning behind the analysis of these variables is we would like to see how the white jail population and black jail population compare to the total jail population and the same with the prison data. This way we can discover any discirmination on a local level(jail) and a state or federal level(prison).
+
+### 1.A Where are maximums of the main Variables in the most recent year?
+Here, we investigate how the population of black people and white people compare in both prison and jail during the most recent year. We will introduce another comparison, the proportions to the general population.
+```{r, echo = FALSE}
+# filter all data by most recent year
+# Black Jail Population
+bjpRecent <- dat %>%
+  drop_na(black_jail_pop) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(black_jail_pop, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# White Jail Population
+wjpRecent <- dat %>%
+  drop_na(white_jail_pop) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(white_jail_pop, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# Total Jail Population
+tjpRecent <- dat %>%
+  drop_na(total_jail_pop) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(total_jail_pop, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# Black Prison Population
+bppRecent <- dat %>%
+  drop_na(black_prison_pop) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(black_prison_pop, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# White Prison Population
+wppRecent <- dat %>%
+  drop_na(white_prison_pop) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(white_prison_pop, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# Total Prison Population
+tppRecent <- dat %>%
+  drop_na(total_prison_pop) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(total_prison_pop, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# Black Population
+bpRecent <- dat %>%
+  drop_na(black_pop_15to64) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(black_pop_15to64, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# White Population
+wpRecent <- dat %>%
+  drop_na(white_pop_15to64) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(white_pop_15to64, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# Total Population
+tpRecent <- dat %>%
+  drop_na(total_pop_15to64) %>%
+  group_by(year) %>%
+  summarise(sumPop = sum(total_pop_15to64, na.rm = TRUE)) %>%
+  filter(year == max(year)) %>%
+  pull(sumPop)
+
+# Creates Data Frames easier to use for graphs
+dfJailRecent <- data.frame(racePop = c("Black Jail Population", "White Jail Population", "Total Jail Population"), recentPop = c(bjpRecent, wjpRecent, tjpRecent))
+
+ggplot(data = dfJailRecent, aes(x = racePop, y = recentPop)) +
+  geom_col(col = "red", fill = "red") +
+  xlab("Populations of Jails by Race") +
+  ylab("Population") +
+  labs(title = "Total Population of each Race in Jail")
+
+dfPrisonRecent <- data.frame(racePop = c("Black Prison Population", "White Prison Population", "Total Prison Population"), recentPop = c(bppRecent, wppRecent, tppRecent))
+
+ggplot(data = dfPrisonRecent, aes(x = racePop, y = recentPop)) +
+  geom_col(col = "blue", fill = "blue") +
+  xlab("Populations of Prisons by Race") +
+  ylab("Population") +
+  labs(title = "Total Population of each Race in Prison")
+
+dfPopRecent <- data.frame(racePop = c("Black Population", "White Population", "Total Population"), recentPop = c(bpRecent, wpRecent, tpRecent))
+
+ggplot(data = dfPopRecent, aes(x = racePop, y = recentPop)) +
+  geom_col(col = "black", fill = "black") +
+  xlab("Total Populations of the Nation by Race") +
+  ylab("Population") +
+  labs(title = "Total Population of each Race")
+
+```
+
+\noindent Looking at the charts above, it is clear that the total population of black people is significantly less than white people. The black population makes up very small amount of the total population of the nation. We see that the black population is `r 100 * bpRecent / tpRecent`% of the Nation's total population but makes up for `r 100 * bjpRecent / tjpRecent`% in jails and `r 100 * bppRecent / tppRecent`% in prisons. While the white population makes up `r 100 * wpRecent / tpRecent`% of the Nation's total population but makes up for `r 100 * wjpRecent / tjpRecent`% in jails and `r 100 * wppRecent / tppRecent`% in prisons. The black population makes a higher percentage of prisons and jails than it does to the national population, while the white population does the opposite.
+
+
+### Populations of Jail and Prison Over Time
+Here, we investigate how the population of black people and white people compare in both prison and jail over time. We will graph the comparisons on a line graph.
+
+```{r, echo = FALSE}
+# Year Vector
+dummyDate <- dat %>%
+  group_by(year) %>%
+  filter(year > 1984) %>%
+  pull(year)
+
+# Black Jail Population Vector over the Years
+bjp <- dat %>%
+  drop_na(black_jail_pop) %>%
+  group_by(year) %>%
+  filter(year > 1984) %>%
+  summarise(sumPop = sum(black_jail_pop, na.rm = TRUE)) %>%
+  pull(sumPop)
+
+# White Jail Population Vector over the Years
+wjp <- dat %>%
+  drop_na(white_jail_pop) %>%
+  group_by(year) %>%
+  filter(year > 1984) %>%
+  summarise(sumPop = sum(white_jail_pop, na.rm = TRUE)) %>%
+  pull(sumPop)
+
+# Total Jail Population Vector over the Years
+tjp <- dat %>%
+  drop_na(total_jail_pop) %>%
+  group_by(year) %>%
+  filter(year > 1984) %>%
+  summarise(sumPop = sum(total_jail_pop, na.rm = TRUE)) %>%
+  pull(sumPop)
+
+# Black Prison Population Vector over the Years
+bpp <- dat %>%
+  drop_na(black_prison_pop) %>%
+  group_by(year) %>%
+  filter(year > 1982) %>%
+  summarise(sumPop = sum(black_prison_pop, na.rm = TRUE)) %>%
+  pull(sumPop)
+
+# White Prison Population Vector over the Years
+wpp <- dat %>%
+  drop_na(white_prison_pop) %>%
+  group_by(year) %>%
+  filter(year > 1982) %>%
+  summarise(sumPop = sum(white_prison_pop, na.rm = TRUE)) %>%
+  pull(sumPop)
+
+# Total Prison Population Vector over the Years
+tpp <- dat %>%
+  drop_na(total_prison_pop) %>%
+  group_by(year) %>%
+  filter(year > 1982) %>%
+  summarise(sumPop = sum(total_prison_pop, na.rm = TRUE)) %>%
+  pull(sumPop)
+
+# Data Frame for graph
+statBuild <- data.frame(year = dummyDate, bjpop = bjp, wjpop = wjp, tjpop = tjp)
+
+colors <- c("Black Population" = "red", "White Population" = "blue", "Total Population" = "black")
+
+# Generates Graph
+ggplot(data = statBuild, aes(x = year)) +
+  geom_line(aes(y = bjpop, color = "Black")) +
+  geom_line(aes(y = wjpop, color = "White")) +
+  geom_line(aes(y = tjpop, color = "Total")) +
+  xlab("Time in Years") +
+  ylab("Populations of Jails by Race") +
+  labs(title = "Populations of Jails by Race vs Time", color = "Race")
+
+
+# Data Frame for graph
+statBuild1 <- data.frame(year = dummyDate, bppop = bpp, wppop = wpp, tppop = tpp)
+
+# Generates Graph
+ggplot(data = statBuild1, aes(x = year)) +
+  geom_line(aes(y = bppop, color = "Black")) +
+  geom_line(aes(y = wppop, color = "White")) +
+  geom_line(aes(y = tppop, color = "Total")) +
+  xlab("Time in Years") +
+  ylab("Populations of Prisons by Race") +
+  labs(title = "Populations of Prisons by Race vs Time", color = "Race")
+```
+
+\noindent Looking at the graphs above, we can see that both graphs report interesting trends. The first graph, shows there is a slight decrease near the end of the graph for the total jail population and white jail population, however even with the national and white decrease the black jail population continues to increase. The second graph to our surprise shows the intersection of black and white prison populations. Throughout the past 20 years there seems to have been more black people in prison than white people even though the black community makes up `r 100 * bpRecent / tpRecent`% of the nation while the white community makes up `r 100 * wpRecent / tpRecent`% of the population. However it looks like in recent years the white population in prison has risen over the black population in prison.
+
+
+
+### Map
+Here we will investigate how many people of the African American community are in jail for each state. We hone in on the jail statistics over the prison statistics because the graphs over time shows that there were more African Americans in jail than White Americans in the most recent year, even though they occupied less of the nations total population. Another note is that the trends showed that there was an increasing trend of African Americans sent to jail while there were a decreasing amount of White Americans sent to jail.
+
+**African American Jail Population Density Map Across The United States of America**:
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# Creates Density Data Frame for Black people in jail
+densityMapJailBlack <- dat %>%
+  drop_na(black_jail_pop) %>%
+  filter(year == max(year)) %>%
+  group_by(state) %>%
+  summarise(sumJail = sum(black_jail_pop), na.rm = TRUE)
+
+# bins
+bins <- c(1000, 5000, 10000, 15000, 20000, Inf)
+# creates density vector
+jklf <- as.numeric(densityMapJailBlack$sumJail)
+# manual input for density vector
+# the reason behind the manual input is that mapStates has a weird
+# sorting where some states have multiple entries for multiple areas of the # nation so manual input was necessary without using certain libraries we
+# were instructed not to use
+jklfmanual <- c(7154, 1919, 2867, 15492, 2561.5, 30.5, 29.6, 1774, 19938.5, 21921.25, 130.89, 8332.35, 4149.5, 120.5, 1562.67, 4749.74, 16978.34, 127.13, 5577.53, 2215.22, 2215.22, 2215.22, 6038.15, 6038.15, 1818.03, 7456, 4580, 105.80, 880.66, 2302.98, 154, 3086, 4332.84, 10494.85, 10494.85, 10494.85, 10494.85, 9411.53, 9411.53, 9411.53, 163.60, 7384.95, 2819.66, 507.13, 12912.13, 22.2, 6082, 161.02, 9797.59, 19699.77, 500.54, 133.76, 13576.27, 13576.27, 13576.27, 1992.39, 1992.39, 1992.39, 1992.39, 1992.39, 871.16, 3835.00, 139.93)
+# pallete with density and bins
+pal <- colorBin("YlOrRd", domain = jklfmanual, bins = bins)
+
+# This was taken from:
+# https://stackoverflow.com/questions/49072510/r-add-title-to-leaflet-map
+tag.map.title <- tags$style(HTML("
+  .leaflet-control.map-title {
+    transform: translate(-50%,20%);
+    position: fixed !important;
+    left: 50%;
+    text-align: center;
+    padding-left: 10px;
+    padding-right: 10px;
+    background: rgba(255,255,255,0.75);
+    font-weight: bold;
+    font-size: 18px;
+  }
+"))
+
+title <- tags$div(
+  tag.map.title, HTML("African American Jail Population Density Map Across The United States of America")
+)  
+
+#
+
+# create map using leaflet
+mapStates = map("state", fill = TRUE, plot = FALSE)
+jailDensityMap <- leaflet(data = mapStates) %>%
+  addTiles() %>%
+  # add cool backgrounds
+  addPolygons(fillColor = topo.colors(10, alpha = NULL), stroke = FALSE) %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  # make it possible to change layers
+  addLayersControl(baseGroups = c("Toner Lite", "world Imagery")) %>%
+    addControl(title, position = "topleft", className="map-title") %>%       addPolygons(
+    fillColor = ~pal(jklfmanual),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7) %>%
+    addLegend(pal = pal, values = ~density, opacity = 0.7, title = "Jail Population",
+    position = "bottomright")
+
+jailDensityMap
+```
+
+It is very clear that there is a trend of more African Americans sent to jail the further south you go. Even though we cannot make any conclusions on the cause of this without further analysis. One thought would be to analyze the voting patterns for each state and analyze if there could be a possible trend with political party affiliation. 
